@@ -33,27 +33,29 @@ class App extends React.Component<{}, State> {
     state: State = createEmptyState();
 
     private async updateGraph(): Promise<void> {
-        const l = window.location;
+        getSource()
+            .then(async data => {
+                if (data !== null) {
+                    let element: Rendering;
+                    try {
+                        element = await renderElement(data);
+                    } catch (e) {
+                        this.setState(createErrorState("Graph render error"));
+                        return
+                    }
 
-        const hash = l.hash;
-        if (hash && hash.length > 1) {
-            let source = decodeURIComponent(hash.substring(1))
-            let element: Rendering;
-            try {
-                element = await renderElement(source);
-            } catch (e) {
-                this.setState(createErrorState("Graph render error"));
-                return
-            }
-
-            if (element) {
-                this.setState(createElementState(element));
-            } else {
-                this.setState(createErrorState("Graph could not be rendered"));
-            }
-        } else {
-            this.setState(createErrorState("No dot source in URL start with #"));
-        }
+                    if (element) {
+                        this.setState(createElementState(element));
+                    } else {
+                        this.setState(createErrorState("Graph could not be rendered"));
+                    }
+                } else {
+                    this.setState(createErrorState("No dot source in URL start with # or path"));
+                }
+            })
+            .catch(error => {
+                console.error("发生错误：", error);
+            });
     };
 
     public componentDidMount() {
@@ -146,3 +148,48 @@ const createZoomWrapper = (child: Rendering): SvgPanZoom.Instance => {
         zoomScaleSensitivity: 0.5,
     });
 };
+
+
+async function fetchData(fileUrl: string): Promise<string | null> {
+    try {
+        const response = await fetch(new Request(fileUrl));
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const data = await response.text();
+        return data;
+    } catch (error) {
+        console.error('发生错误:', error);
+        return null;
+    }
+}
+
+async function getSource(): Promise<string | null> {
+    let source: string | null = null;
+
+    const paramsString = window.location.search;
+    let searchParams = new URLSearchParams(paramsString);
+    let fileUrl = searchParams.get("path");
+    if (fileUrl !== null) {
+        await fetchData(fileUrl)
+            .then(data => {
+                if (data !== null) {
+                    source = data;
+                } else {
+                    console.error("未能获取数据。");
+                }
+            })
+            .catch(error => {
+                console.error("发生错误：", error);
+            });
+    }
+
+    const hash = window.location.hash;
+    if (hash && hash.length > 1) {
+        source = decodeURIComponent(hash.substring(1));
+    }
+
+    return source;
+}
