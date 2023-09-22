@@ -14,17 +14,17 @@ export function renderElement(dotSrc: string): Promise<Rendering> {
     const renderOptions = {
         engine: "dot"
     };
-    const isOver400KB: boolean = isStringOver400KB(dotSrc);
-    if (isOver400KB) {
-        renderOptions.engine = "twopi"
+    const isOver350KB: boolean = isStringOver350KB(dotSrc);
+    if (isOver350KB) {
+        renderOptions.engine = "osage"
     }
 
     return  viz.renderSVGElement(dotSrc, renderOptions).catch(catcher);
 }
 
-function isStringOver400KB(str: string): boolean {
+function isStringOver350KB(str: string): boolean {
     const bytes = new TextEncoder().encode(str);
     const kb = bytes.length / 1024;
 
-    return kb > 400;
+    return kb > 350;
 }
